@@ -36,8 +36,6 @@
 <script setup>
 import AppSidebar from "~/components/app/AppSidebar.vue";
 import AppTopbar from "~/components/app/AppTopbar.vue";
-
-definePageMeta({ middleware: "auth" });
 </script>
 
 <style scoped>
@@ -60,7 +58,6 @@ definePageMeta({ middleware: "auth" });
   width: 100%;
 }
 
-/* Mobile nav */
 .mobile-nav {
   position: fixed;
   bottom: 0;
