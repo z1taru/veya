@@ -34,8 +34,17 @@
 </template>
 
 <script setup>
+import { onMounted } from "vue";
 import AppSidebar from "~/components/app/AppSidebar.vue";
 import AppTopbar from "~/components/app/AppTopbar.vue";
+
+const auth = useAuthStore();
+const notifications = useNotificationsStore();
+
+onMounted(() => {
+  auth.initAuth();
+  if (auth.isAuthenticated) notifications.fetchNotifications().catch(() => {});
+});
 </script>
 
 <style scoped>

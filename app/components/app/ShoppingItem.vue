@@ -18,6 +18,7 @@
 <script setup>
 import { computed } from "vue";
 import { useFamilyStore } from "~/stores/family";
+import { getMemberDisplayName } from "~/utils/displayNames";
 
 const props = defineProps({ item: { type: Object, required: true } });
 defineEmits(["toggle", "delete"]);
@@ -25,7 +26,7 @@ defineEmits(["toggle", "delete"]);
 const family = useFamilyStore();
 const addedByName = computed(() => {
   const m = family.getMemberById(props.item.addedBy);
-  return m ? m.name : null;
+  return m ? getMemberDisplayName(m) : null;
 });
 </script>
 

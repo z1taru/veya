@@ -1,65 +1,159 @@
-// stores/shopping.js
 import { defineStore } from 'pinia'
-import { DEMO_SHOPPING } from '~/data/mockData'
+
+function errorMessage(error, fallback) {
+  return error?.data?.message || error?.data?.error || error?.message || fallback
+}
+
+function normalizeList(response) {
+  const items = Array.isArray(response)
+    ? response
+    : response?.items || response?.content || response?.data || []
+  return items.map((item) => ({
+    ...item,
+    done: item.done ?? item.completed ?? false
+  }))
+}
+
+function toQuery(filter) {
+  if (!filter) return ''
+  const params = new URLSearchParams()
+  if (typeof filter === 'string') params.set('filter', filter)
+  else Object.entries(filter).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') params.set(key, value)
+  })
+  const query = params.toString()
+  return query ? `?${query}` : ''
+}
 
 export const useShoppingStore = defineStore('shopping', {
   state: () => ({
-    items: []
+    items: [],
+    loading: false,
+    error: ''
   }),
 
   getters: {
-    total:     (s) => s.items.length,
-    done:      (s) => s.items.filter(i => i.done).length,
-    remaining: (s) => s.items.filter(i => !i.done).length,
-    progress:  (s) => s.items.length ? Math.round((s.items.filter(i => i.done).length / s.items.length) * 100) : 0
+    total: (state) => state.items.length,
+    done: (state) => state.items.filter((item) => item.done || item.completed).length,
+    remaining: (state) => state.items.filter((item) => !(item.done || item.completed)).length,
+    progress: (state) => {
+      if (!state.items.length) return 0
+      const done = state.items.filter((item) => item.done || item.completed).length
+      return Math.round((done / state.items.length) * 100)
+    }
   },
 
   actions: {
-    init() {
-      if (!process.client) return
-      const saved = localStorage.getItem('veya_shopping')
-      this.items = saved ? JSON.parse(saved) : [...DEMO_SHOPPING]
-      this._persist()
-    },
-
-    addItem(data) {
-      const item = {
-        id:       's_' + Date.now(),
-        name:     data.name     || 'Товар',
-        qty:      data.qty      || null,
-        category: data.category || 'Другое',
-        addedBy:  data.addedBy  || 'u1',
-        done:     false
+    async init() {
+      if (useAuthStore().isAuthenticated) {
+        await this.fetchItems()
       }
-      this.items.push(item)
-      this._persist()
-      return item
     },
 
-    addItems(names, addedBy = 'u1') {
-      names.forEach(name => {
-        this.items.push({ id: 's_' + Date.now() + Math.random(), name, qty: null, category: 'Другое', addedBy, done: false })
-      })
-      this._persist()
+    async fetchItems(filter = null) {
+      const { apiGet } = useApi()
+      this.loading = true
+      this.error = ''
+      try {
+        const response = await apiGet(`/api/shopping${toQuery(filter)}`)
+        this.items = normalizeList(response)
+        return this.items
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось загрузить покупки')
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
 
-    toggleItem(id) {
-      const item = this.items.find(i => i.id === id)
-      if (item) { item.done = !item.done; this._persist() }
+    async addItem(payload) {
+      const { apiPost } = useApi()
+      this.loading = true
+      this.error = ''
+      try {
+        const item = await apiPost('/api/shopping', payload)
+        this.upsertItem(item)
+        return item
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось добавить товар')
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
 
-    deleteItem(id) {
-      this.items = this.items.filter(i => i.id !== id)
-      this._persist()
+    async addItems(names, addedBy = null) {
+      const created = []
+      for (const name of names) {
+        created.push(await this.addItem({ name, addedBy }))
+      }
+      return created
     },
 
-    clearCompleted() {
-      this.items = this.items.filter(i => !i.done)
-      this._persist()
+    async updateItem(id, payload) {
+      const { apiPatch } = useApi()
+      this.loading = true
+      this.error = ''
+      try {
+        const item = await apiPatch(`/api/shopping/${id}`, payload)
+        this.upsertItem(item)
+        return item
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось обновить товар')
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
 
-    _persist() {
-      localStorage.setItem('veya_shopping', JSON.stringify(this.items))
+    async toggleItem(id) {
+      const { apiPatch } = useApi()
+      this.error = ''
+      try {
+        const item = await apiPatch(`/api/shopping/${id}/toggle`, {})
+        this.upsertItem(item)
+        return item
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось изменить товар')
+        throw error
+      }
+    },
+
+    async deleteItem(id) {
+      const { apiDelete } = useApi()
+      this.error = ''
+      try {
+        await apiDelete(`/api/shopping/${id}`)
+        this.items = this.items.filter((item) => item.id !== id)
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось удалить товар')
+        throw error
+      }
+    },
+
+    async clearCompleted() {
+      const { apiDelete } = useApi()
+      this.loading = true
+      this.error = ''
+      try {
+        await apiDelete('/api/shopping/completed')
+        this.items = this.items.filter((item) => !(item.done || item.completed))
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось очистить список')
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    upsertItem(item) {
+      const normalized = {
+        ...item,
+        done: item.done ?? item.completed ?? false
+      }
+      const index = this.items.findIndex((existing) => existing.id === normalized.id)
+      if (index === -1) this.items.push(normalized)
+      else this.items[index] = normalized
     }
   }
 })

@@ -29,9 +29,6 @@
       <p class="auth-hint">
         Нет аккаунта? <NuxtLink to="/register">Зарегистрироваться</NuxtLink>
       </p>
-      <p class="auth-demo">
-        Demo: <strong>demo@veya.app</strong> / <strong>demo123</strong>
-      </p>
     </div>
   </div>
 </template>
@@ -64,7 +61,10 @@ async function submit() {
   }
 
   loading.value = true;
-  const res = await auth.login(form.value.email, form.value.password);
+  const res = await auth.login({
+    email: form.value.email,
+    password: form.value.password,
+  });
   loading.value = false;
 
   if (res.ok) {

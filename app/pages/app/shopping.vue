@@ -50,8 +50,11 @@
     <!-- Filter tabs -->
     <VTabs v-model="filter" :tabs="tabs" />
 
+    <p v-if="store.loading" class="text-muted text-sm">Загружаем покупки...</p>
+    <p v-if="store.error" class="page-error">{{ store.error }}</p>
+
     <!-- List -->
-    <div v-if="filteredItems.length" class="items-list fade-in">
+    <div v-if="!store.loading && filteredItems.length" class="items-list fade-in">
       <ShoppingItem
         v-for="item in filteredItems"
         :key="item.id"
@@ -61,7 +64,7 @@
       />
     </div>
     <EmptyState
-      v-else
+      v-else-if="!store.loading"
       icon="🛒"
       title="Список пуст"
       subtitle="Добавьте первый товар"
@@ -77,7 +80,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useShoppingStore } from "~/stores/shopping";
 import { useAuthStore } from "~/stores/auth";
 import ShoppingItem from "~/components/app/ShoppingItem.vue";
@@ -95,6 +98,10 @@ const auth = useAuthStore();
 const filter = ref("active");
 
 const newItem = ref({ name: "", qty: "", category: "" });
+
+onMounted(() => {
+  store.fetchItems().catch(() => {});
+});
 
 const catOpts = [
   { value: "Молочное", label: "Молочное" },
@@ -119,9 +126,9 @@ const filteredItems = computed(() => {
   return store.items;
 });
 
-function addItem() {
+async function addItem() {
   if (!newItem.value.name.trim()) return;
-  store.addItem({
+  await store.addItem({
     name: newItem.value.name.trim(),
     qty: newItem.value.qty.trim() || null,
     category: newItem.value.category || "Другое",
@@ -194,5 +201,9 @@ function addItem() {
 .clear-row {
   display: flex;
   justify-content: flex-end;
+}
+.page-error {
+  font-size: 0.82rem;
+  color: var(--red);
 }
 </style>

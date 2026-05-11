@@ -6,6 +6,9 @@
       <p class="text-muted">{{ todayLabel }}</p>
     </div>
 
+    <p v-if="pageLoading" class="text-muted text-sm">Загружаем данные...</p>
+    <p v-if="pageError" class="page-error">{{ pageError }}</p>
+
     <!-- Stats -->
     <div class="stat-grid fade-up">
       <div class="stat-card">
@@ -100,10 +103,10 @@
               class="member-row"
             >
               <div class="member-avatar">
-                {{ m.name.slice(0, 2).toUpperCase() }}
+                {{ getInitials(memberName(m)) }}
               </div>
               <div>
-                <div class="member-name">{{ m.name }}</div>
+                <div class="member-name">{{ memberName(m) }}</div>
                 <div class="member-tasks">
                   {{ memberTaskCount(m.id) }} задач
                 </div>
@@ -151,12 +154,17 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "~/stores/auth";
 import { useTasksStore } from "~/stores/tasks";
 import { useFamilyStore } from "~/stores/family";
 import { useShoppingStore } from "~/stores/shopping";
+import {
+  getInitials,
+  getMemberDisplayName,
+  getUserDisplayName,
+} from "~/utils/displayNames";
 import TaskCard from "~/components/public/TaskCard.vue";
 import EmptyState from "~/components/public/EmptyState.vue";
 import AiCommandBox from "~/components/app/AiCommandBox.vue";
@@ -172,8 +180,25 @@ const familyStore = useFamilyStore();
 const shoppingStore = useShoppingStore();
 
 const showModal = ref(false);
+const pageLoading = ref(false);
+const pageError = ref("");
 
-const userName = computed(() => auth.user?.name || "Привет");
+onMounted(async () => {
+  pageLoading.value = true;
+  pageError.value = "";
+  const results = await Promise.allSettled([
+    auth.fetchMe(),
+    familyStore.fetchCurrentFamily(),
+    tasksStore.fetchTasks(),
+    shoppingStore.fetchItems(),
+  ]);
+  pageLoading.value = false;
+  const failed = results.find((result) => result.status === "rejected");
+  if (failed) pageError.value = "Не удалось загрузить часть данных";
+});
+
+const userName = computed(() => getUserDisplayName(auth.user));
+const memberName = (member) => getMemberDisplayName(member);
 
 const todayLabel = computed(() => {
   return new Date().toLocaleDateString("ru-RU", {
@@ -308,6 +333,10 @@ function goTask(task) {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+.page-error {
+  font-size: 0.82rem;
+  color: var(--red);
 }
 
 .quick-actions {

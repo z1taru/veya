@@ -7,7 +7,7 @@
         <div class="profile-row">
           <div class="profile-avatar">{{ initials }}</div>
           <div class="profile-info">
-            <div class="profile-name">{{ user?.name }}</div>
+            <div class="profile-name">{{ userName }}</div>
             <div class="profile-email text-muted text-sm">
               {{ user?.email }}
             </div>
@@ -30,6 +30,7 @@
           >Сохранить профиль</VButton
         >
         <p v-if="profileSaved" class="save-msg fade-in">✓ Профиль обновлён</p>
+        <p v-if="auth.error" class="page-error">{{ auth.error }}</p>
       </VCard>
     </section>
 
@@ -123,7 +124,7 @@
       <VCard class="mt-2">
         <div class="family-info-row">
           <span class="text-muted text-sm">Ваша семья:</span>
-          <strong>{{ family.currentFamily?.name || "—" }}</strong>
+          <strong>{{ familyName }}</strong>
         </div>
         <div class="family-info-row mt-1">
           <span class="text-muted text-sm">Участников:</span>
@@ -153,10 +154,15 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "~/stores/auth";
 import { useFamilyStore } from "~/stores/family";
+import {
+  getFamilyDisplayName,
+  getInitials,
+  getUserDisplayName,
+} from "~/utils/displayNames";
 import VCard from "~/components/ui/VCard.vue";
 import VInput from "~/components/ui/VInput.vue";
 import VButton from "~/components/ui/VButton.vue";
@@ -168,12 +174,12 @@ const auth = useAuthStore();
 const family = useFamilyStore();
 
 const user = computed(() => auth.user);
-const initials = computed(() =>
-  user.value ? user.value.name.slice(0, 2).toUpperCase() : "?",
-);
+const userName = computed(() => getUserDisplayName(user.value));
+const familyName = computed(() => getFamilyDisplayName(family.currentFamily));
+const initials = computed(() => getInitials(userName.value));
 
 const profileForm = ref({
-  name: user.value?.name || "",
+  name: userName.value,
   email: user.value?.email || "",
 });
 const profileSaved = ref(false);
@@ -187,14 +193,25 @@ const themes = [
   { value: "system", icon: "💻", label: "Системная" },
 ];
 
+onMounted(() => {
+  auth.fetchMe().catch(() => {});
+  family.fetchCurrentFamily().catch(() => {});
+});
+
+watch(user, (value) => {
+  profileForm.value = {
+    name: getUserDisplayName(value),
+    email: value?.email || "",
+  };
+});
+
 function saveProfile() {
-  // mock save
   profileSaved.value = true;
   setTimeout(() => (profileSaved.value = false), 3000);
 }
 
-function handleLogout() {
-  auth.logout();
+async function handleLogout() {
+  await auth.logout();
   router.push("/login");
 }
 </script>
@@ -253,6 +270,11 @@ function handleLogout() {
 .save-msg {
   font-size: 0.82rem;
   color: var(--green);
+  margin-top: 0.5rem;
+}
+.page-error {
+  font-size: 0.82rem;
+  color: var(--red);
   margin-top: 0.5rem;
 }
 

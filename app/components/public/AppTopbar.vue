@@ -19,13 +19,12 @@
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "~/stores/auth";
+import { getInitials, getUserDisplayName } from "~/utils/displayNames";
 
 const auth = useAuthStore();
 const route = useRoute();
 
-const initials = computed(() =>
-  auth.user ? auth.user.name.slice(0, 2).toUpperCase() : "?",
-);
+const initials = computed(() => getInitials(getUserDisplayName(auth.user)));
 
 const TITLES = {
   "/app": { title: "Обзор", subtitle: null },

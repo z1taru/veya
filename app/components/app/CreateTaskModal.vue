@@ -18,7 +18,7 @@
         <select v-model="form.assigneeId" class="vsel">
           <option value="">Не назначено</option>
           <option v-for="m in members" :key="m.id" :value="m.id">
-            {{ m.name }}
+            {{ memberName(m) }}
           </option>
         </select>
       </div>
@@ -50,6 +50,7 @@ import { ref, computed, watch } from "vue";
 import { useTasksStore } from "~/stores/tasks";
 import { useFamilyStore } from "~/stores/family";
 import { useAuthStore } from "~/stores/auth";
+import { getMemberDisplayName } from "~/utils/displayNames";
 import VModal from "~/components/ui/VModal.vue";
 import VInput from "~/components/ui/VInput.vue";
 import VTextarea from "~/components/ui/VTextarea.vue";
@@ -69,6 +70,7 @@ const family = useFamilyStore();
 const auth = useAuthStore();
 
 const members = computed(() => family.members);
+const memberName = (member) => getMemberDisplayName(member);
 
 const blank = () => ({
   title: "",

@@ -1,62 +1,134 @@
-// stores/family.js
 import { defineStore } from 'pinia'
-import { DEMO_FAMILY, DEMO_MEMBERS } from '~/data/mockData'
+
+function errorMessage(error, fallback) {
+  return error?.data?.message || error?.data?.error || error?.message || fallback
+}
 
 export const useFamilyStore = defineStore('family', {
   state: () => ({
     currentFamily: null,
     members: [],
-    invites: []
+    invites: [],
+    loading: false,
+    error: ''
   }),
 
   actions: {
-    init() {
-      if (!process.client) return
-      const savedFamily  = localStorage.getItem('veya_family')
-      const savedMembers = localStorage.getItem('veya_members')
-      const savedInvites = localStorage.getItem('veya_invites')
-      this.currentFamily = savedFamily  ? JSON.parse(savedFamily)  : DEMO_FAMILY
-      this.members       = savedMembers ? JSON.parse(savedMembers) : [...DEMO_MEMBERS]
-      this.invites       = savedInvites ? JSON.parse(savedInvites) : []
-      this._persist()
+    async init() {
+      if (useAuthStore().isAuthenticated) {
+        await this.fetchCurrentFamily()
+      }
     },
 
-    setFamily(name) {
-      this.currentFamily = { id: 'f_' + Date.now(), name, createdAt: new Date().toISOString().split('T')[0] }
-      this._persist()
+    async fetchCurrentFamily() {
+      const { apiGet } = useApi()
+      this.loading = true
+      this.error = ''
+      try {
+        this.currentFamily = await apiGet('/api/families/current')
+        await this.fetchMembers()
+        return this.currentFamily
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось загрузить семью')
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
 
-    addMember(member) {
-      const m = { ...member, id: 'u_' + Date.now(), status: 'active', avatar: null }
-      this.members.push(m)
-      this._persist()
-      return m
+    async setFamily(name) {
+      if (!this.currentFamily?.id) {
+        this.currentFamily = { name }
+        return this.currentFamily
+      }
+      const { apiPatch } = useApi()
+      this.loading = true
+      this.error = ''
+      try {
+        this.currentFamily = await apiPatch(`/api/families/${this.currentFamily.id}`, { name })
+        return this.currentFamily
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось сохранить семью')
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
 
-    inviteMember(email, name) {
-      const inv = { id: 'inv_' + Date.now(), email, name, status: 'pending', sentAt: new Date().toISOString() }
-      this.invites.push(inv)
-      localStorage.setItem('veya_invites', JSON.stringify(this.invites))
-      return inv
+    async fetchMembers() {
+      if (!this.currentFamily?.id) return []
+      const { apiGet } = useApi()
+      this.loading = true
+      this.error = ''
+      try {
+        this.members = await apiGet(`/api/families/${this.currentFamily.id}/members`)
+        return this.members
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось загрузить участников')
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
 
-    updateMemberRole(memberId, role) {
-      const m = this.members.find(m => m.id === memberId)
-      if (m) { m.role = role; this._persist() }
+    async inviteMember(payload, name) {
+      if (!this.currentFamily?.id) throw new Error('Family is not loaded')
+      const body = typeof payload === 'object'
+        ? payload
+        : { email: payload, name }
+      const { apiPost } = useApi()
+      this.loading = true
+      this.error = ''
+      try {
+        const invite = await apiPost(`/api/families/${this.currentFamily.id}/members/invite`, body)
+        this.invites.push(invite)
+        return invite
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось отправить приглашение')
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
 
-    removeMember(memberId) {
-      this.members = this.members.filter(m => m.id !== memberId)
-      this._persist()
+    async addMember(member) {
+      return this.inviteMember(member)
+    },
+
+    async updateMemberRole(memberId, role) {
+      if (!this.currentFamily?.id) return null
+      const { apiPatch } = useApi()
+      this.error = ''
+      try {
+        const updated = await apiPatch(`/api/families/${this.currentFamily.id}/members/${memberId}/role`, { role })
+        const index = this.members.findIndex((member) => member.id === memberId)
+        if (index !== -1) this.members[index] = updated
+        return updated
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось обновить роль')
+        throw error
+      }
+    },
+
+    async removeMember(memberId) {
+      if (!this.currentFamily?.id) return
+      const { apiDelete } = useApi()
+      this.error = ''
+      try {
+        await apiDelete(`/api/families/${this.currentFamily.id}/members/${memberId}`)
+        this.members = this.members.filter((member) => member.id !== memberId)
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось удалить участника')
+        throw error
+      }
     },
 
     getMemberById(id) {
-      return this.members.find(m => m.id === id) || null
-    },
-
-    _persist() {
-      localStorage.setItem('veya_family',  JSON.stringify(this.currentFamily))
-      localStorage.setItem('veya_members', JSON.stringify(this.members))
+      return this.members.find((member) => (
+        String(member.id) === String(id) ||
+        String(member.user?.id) === String(id) ||
+        String(member.userId) === String(id)
+      )) || null
     }
   }
 })

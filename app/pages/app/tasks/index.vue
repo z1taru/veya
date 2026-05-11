@@ -10,7 +10,10 @@
 
     <VTabs v-model="filter" :tabs="tabs" />
 
-    <div v-if="filteredTasks.length" class="tasks-list fade-in">
+    <p v-if="tasks.loading" class="text-muted text-sm">Загружаем задачи...</p>
+    <p v-if="tasks.error" class="page-error">{{ tasks.error }}</p>
+
+    <div v-if="!tasks.loading && filteredTasks.length" class="tasks-list fade-in">
       <TaskCard
         v-for="task in filteredTasks"
         :key="task.id"
@@ -19,7 +22,7 @@
       />
     </div>
     <EmptyState
-      v-else
+      v-else-if="!tasks.loading"
       icon="✅"
       title="Задач нет"
       subtitle="Создайте первую задачу для семьи"
@@ -30,7 +33,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useTasksStore } from "~/stores/tasks";
 import { useAuthStore } from "~/stores/auth";
@@ -48,6 +51,10 @@ const auth = useAuthStore();
 
 const showModal = ref(false);
 const filter = ref("all");
+
+onMounted(() => {
+  tasks.fetchTasks().catch(() => {});
+});
 
 const tabs = computed(() => [
   { value: "all", label: "Все", count: tasks.tasks.length },
@@ -97,5 +104,9 @@ function goTask(task) {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+.page-error {
+  font-size: 0.82rem;
+  color: var(--red);
 }
 </style>

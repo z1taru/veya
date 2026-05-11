@@ -12,7 +12,10 @@
 
     <VTabs v-model="filter" :tabs="tabs" />
 
-    <div v-if="filteredReminders.length" class="reminders-list fade-in">
+    <p v-if="store.loading" class="text-muted text-sm">Загружаем напоминания...</p>
+    <p v-if="store.error" class="page-error">{{ store.error }}</p>
+
+    <div v-if="!store.loading && filteredReminders.length" class="reminders-list fade-in">
       <ReminderCard
         v-for="reminder in filteredReminders"
         :key="reminder.id"
@@ -21,7 +24,7 @@
       />
     </div>
     <EmptyState
-      v-else
+      v-else-if="!store.loading"
       icon="🔔"
       title="Напоминаний нет"
       subtitle="Создайте напоминание через AI-помощника"
@@ -45,34 +48,36 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
-import { useTasksStore } from "~/stores/tasks";
-import { useFamilyStore } from "~/stores/family";
-import { DEMO_REMINDERS } from "~/data/mockData";
+import { ref, computed, onMounted } from "vue";
+import { useAuthStore } from "~/stores/auth";
+import { useRemindersStore } from "~/stores/reminders";
 import ReminderCard from "~/components/app/ReminderCard.vue";
 import EmptyState from "~/components/public/EmptyState.vue";
 import VTabs from "~/components/ui/VTabs.vue";
 
 definePageMeta({ layout: "app", middleware: "auth" });
 
-const family = useFamilyStore();
-
-// Используем DEMO_REMINDERS + задачи с repeat как источник данных
-const reminders = ref(DEMO_REMINDERS.map((r) => ({ ...r })));
+const auth = useAuthStore();
+const store = useRemindersStore();
 
 const filter = ref("all");
+const reminders = computed(() => store.reminders);
+
+onMounted(() => {
+  store.fetchReminders().catch(() => {});
+});
 
 const tabs = computed(() => [
   { value: "all", label: "Все", count: reminders.value.length },
   {
     value: "personal",
     label: "Личные",
-    count: reminders.value.filter((r) => r.assigneeId === "u1").length,
+    count: reminders.value.filter((r) => r.assigneeId === auth.user?.id).length,
   },
   {
     value: "family",
     label: "Семейные",
-    count: reminders.value.filter((r) => r.assigneeId !== "u1").length,
+    count: reminders.value.filter((r) => r.assigneeId !== auth.user?.id).length,
   },
   {
     value: "recurring",
@@ -84,9 +89,9 @@ const tabs = computed(() => [
 const filteredReminders = computed(() => {
   switch (filter.value) {
     case "personal":
-      return reminders.value.filter((r) => r.assigneeId === "u1");
+      return reminders.value.filter((r) => r.assigneeId === auth.user?.id);
     case "family":
-      return reminders.value.filter((r) => r.assigneeId !== "u1");
+      return reminders.value.filter((r) => r.assigneeId !== auth.user?.id);
     case "recurring":
       return reminders.value.filter((r) => r.repeat);
     default:
@@ -100,7 +105,7 @@ const recurringReminders = computed(() =>
 
 function toggleReminder(id) {
   const r = reminders.value.find((r) => r.id === id);
-  if (r) r.active = !r.active;
+  if (r) store.updateReminder(id, { active: !r.active }).catch(() => {});
 }
 </script>
 
@@ -169,5 +174,9 @@ function toggleReminder(id) {
 }
 .empty-cta:hover {
   background: rgba(60, 255, 138, 0.15);
+}
+.page-error {
+  font-size: 0.82rem;
+  color: var(--red);
 }
 </style>

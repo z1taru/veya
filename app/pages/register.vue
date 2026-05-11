@@ -6,7 +6,11 @@
       <p class="auth-sub">Начните организовывать семейную жизнь</p>
 
       <form class="auth-form" @submit.prevent="submit">
-        <VInput v-model="form.name" label="Ваше имя" placeholder="Динара" />
+        <VInput
+          v-model="form.fullName"
+          label="Ваше имя"
+          placeholder="Динара Сейткали"
+        />
         <VInput
           v-model="form.email"
           label="Email"
@@ -41,7 +45,6 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "~/stores/auth";
-import { useFamilyStore } from "~/stores/family";
 import VInput from "~/components/ui/VInput.vue";
 import VButton from "~/components/ui/VButton.vue";
 
@@ -49,26 +52,43 @@ definePageMeta({ layout: "default" });
 
 const router = useRouter();
 const auth = useAuthStore();
-const family = useFamilyStore();
 
-const form = ref({ name: "", email: "", password: "", familyName: "" });
+const form = ref({ fullName: "", email: "", password: "", familyName: "" });
 const error = ref("");
 const loading = ref(false);
 
 async function submit() {
   error.value = "";
-  if (!form.value.name || !form.value.email || !form.value.password) {
-    error.value = "Заполните все обязательные поля";
+  const fullName = form.value.fullName.trim();
+  const email = form.value.email.trim();
+  const password = form.value.password;
+  const familyName = form.value.familyName.trim();
+
+  if (!fullName) {
+    error.value = "Введите имя";
     return;
   }
+  if (!email) {
+    error.value = "Введите email";
+    return;
+  }
+  if (!password) {
+    error.value = "Введите пароль";
+    return;
+  }
+  if (!familyName) {
+    error.value = "Введите название семьи";
+    return;
+  }
+
   loading.value = true;
-  const res = await auth.register(
-    form.value.name,
-    form.value.email,
-    form.value.password,
-  );
+  const res = await auth.register({
+    fullName,
+    email,
+    password,
+    familyName,
+  });
   if (res.ok) {
-    if (form.value.familyName) family.setFamily(form.value.familyName);
     router.push("/onboarding");
   } else {
     error.value = res.error;

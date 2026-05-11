@@ -2,8 +2,8 @@
   <div class="fmc">
     <div class="fmc-avatar">{{ initials }}</div>
     <div class="fmc-info">
-      <div class="fmc-name">{{ member.name }}</div>
-      <div class="fmc-email">{{ member.email || "—" }}</div>
+      <div class="fmc-name">{{ displayName }}</div>
+      <div class="fmc-email">{{ displayEmail || "—" }}</div>
     </div>
     <div class="fmc-right">
       <span :class="['role-badge', `role-${member.role}`]">{{
@@ -21,6 +21,11 @@
 
 <script setup>
 import { computed } from "vue";
+import {
+  getInitials,
+  getMemberDisplayName,
+  getMemberEmail,
+} from "~/utils/displayNames";
 
 const props = defineProps({ member: { type: Object, required: true } });
 
@@ -31,7 +36,9 @@ const ROLES = {
   child: "Ребёнок",
 };
 
-const initials = computed(() => props.member.name.slice(0, 2).toUpperCase());
+const displayName = computed(() => getMemberDisplayName(props.member));
+const displayEmail = computed(() => getMemberEmail(props.member));
+const initials = computed(() => getInitials(displayName.value));
 const roleLabel = computed(() => ROLES[props.member.role] || props.member.role);
 </script>
 

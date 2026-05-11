@@ -2,7 +2,7 @@
   <div class="acb">
     <div class="acb-header">
       <span class="acb-label">✨ AI-помощник</span>
-      <span class="acb-note">mock-парсер</span>
+      <span class="acb-note">backend AI</span>
     </div>
 
     <textarea
@@ -29,21 +29,23 @@
       Разобрать команду
     </VButton>
 
+    <div v-if="error" class="acb-error fade-in">{{ error }}</div>
+
     <!-- Preview -->
     <div v-if="result" class="acb-preview fade-in">
       <div class="acb-preview-header">
         <span class="preview-type">{{ typeLabel }}</span>
-        <span class="preview-summary">{{ result.summary }}</span>
+        <span class="preview-summary">{{ result.summary || result.title || command }}</span>
       </div>
 
       <div v-if="result.type === 'shopping'" class="preview-items">
-        <span v-for="item in result.items" :key="item" class="preview-chip">{{
+        <span v-for="item in resultItems" :key="item" class="preview-chip">{{
           item
         }}</span>
       </div>
       <div v-else class="preview-task">
         <div v-if="result.assignee" class="pt-row">
-          <span class="pt-label">Кому:</span> {{ result.assignee.name }}
+          <span class="pt-label">Кому:</span> {{ assigneeName }}
         </div>
         <div v-if="result.dueDate" class="pt-row">
           <span class="pt-label">Дата:</span> {{ result.dueDate }}
@@ -71,23 +73,23 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { useAiParser } from "~/composables/useAiParser";
+import { ref, computed } from "vue";
+import { useAiStore } from "~/stores/ai";
 import { useTasksStore } from "~/stores/tasks";
 import { useShoppingStore } from "~/stores/shopping";
-import { useAuthStore } from "~/stores/auth";
+import { getMemberDisplayName } from "~/utils/displayNames";
 import VButton from "~/components/ui/VButton.vue";
 
-const { parse: parseCmd } = useAiParser();
+const ai = useAiStore();
 const tasks = useTasksStore();
 const shopping = useShoppingStore();
-const auth = useAuthStore();
 
 const command = ref("");
 const result = ref(null);
-const loading = ref(false);
 const done = ref(false);
 const doneMsg = ref("");
+const error = ref("");
+const loading = computed(() => ai.loading);
 
 const examples = [
   "Напомни Алдияру прийти в 19:00",
@@ -96,8 +98,10 @@ const examples = [
   "Напомни бабушке о лекарстве каждый день в 20:00",
 ];
 
-const TYPE_LABELS = { shopping: "🛒 Покупки", task: "✅ Задача" };
-const typeLabel = () => TYPE_LABELS[result.value?.type] || "Команда";
+const TYPE_LABELS = { shopping: "🛒 Покупки", task: "✅ Задача", reminder: "🔔 Напоминание" };
+const typeLabel = computed(() => TYPE_LABELS[result.value?.type] || "Команда");
+const resultItems = computed(() => result.value?.items || result.value?.shoppingItems || []);
+const assigneeName = computed(() => getMemberDisplayName(result.value?.assignee));
 
 function repeatLabel(r) {
   return (
@@ -109,34 +113,36 @@ function repeatLabel(r) {
 
 async function parse() {
   if (!command.value.trim()) return;
-  loading.value = true;
+  error.value = "";
   done.value = false;
-  await new Promise((r) => setTimeout(r, 400));
-  result.value = parseCmd(command.value);
-  loading.value = false;
+  try {
+    result.value = await ai.parseCommand(command.value);
+  } catch (_) {
+    error.value = ai.error || "Не удалось разобрать команду";
+  }
 }
 
-function confirm() {
+async function confirm() {
   if (!result.value) return;
-  if (result.value.type === "shopping") {
-    shopping.addItems(result.value.items, auth.user?.id || "u1");
-    doneMsg.value = `Добавлено в покупки: ${result.value.items.join(", ")}`;
-  } else {
-    tasks.createTask({
-      title: result.value.title,
-      assigneeId: result.value.assignee?.id || null,
-      dueDate: result.value.dueDate,
-      dueTime: result.value.dueTime,
-      repeat: result.value.repeat,
-      priority: result.value.priority,
-      creatorId: auth.user?.id || "u1",
-    });
-    doneMsg.value = `Задача создана: «${result.value.title}»`;
+  error.value = "";
+  try {
+    const created = await ai.createFromCommand(result.value.id);
+    if (result.value.type === "shopping") {
+      await shopping.fetchItems().catch(() => {});
+      doneMsg.value = "Покупки обновлены";
+    } else {
+      await tasks.fetchTasks().catch(() => {});
+      doneMsg.value = created?.title
+        ? `Задача создана: «${created.title}»`
+        : "Команда выполнена";
+    }
+    result.value = null;
+    command.value = "";
+    done.value = true;
+    setTimeout(() => (done.value = false), 4000);
+  } catch (_) {
+    error.value = ai.error || "Не удалось выполнить команду";
   }
-  result.value = null;
-  command.value = "";
-  done.value = true;
-  setTimeout(() => (done.value = false), 4000);
 }
 </script>
 
@@ -271,5 +277,13 @@ function confirm() {
   padding: 0.75rem 1rem;
   font-size: 0.85rem;
   color: var(--green);
+}
+.acb-error {
+  background: rgba(255, 92, 92, 0.08);
+  border: 1px solid rgba(255, 92, 92, 0.2);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  color: var(--red);
 }
 </style>

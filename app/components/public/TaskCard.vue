@@ -10,7 +10,7 @@
     </div>
     <h4 class="task-title">{{ task.title }}</h4>
     <div class="task-meta">
-      <span v-if="assignee" class="task-assignee">👤 {{ assignee.name }}</span>
+      <span v-if="assignee" class="task-assignee">👤 {{ assigneeName }}</span>
       <span v-if="task.repeat" class="task-repeat">🔁 {{ repeatLabel }}</span>
       <span v-if="task.dueDate" class="task-date">{{
         formatDate(task.dueDate)
@@ -22,6 +22,7 @@
 <script setup>
 import { computed } from "vue";
 import { useFamilyStore } from "~/stores/family";
+import { getMemberDisplayName } from "~/utils/displayNames";
 import TaskStatusBadge from "./TaskStatusBadge.vue";
 
 const props = defineProps({ task: { type: Object, required: true } });
@@ -29,6 +30,7 @@ defineEmits(["click"]);
 
 const family = useFamilyStore();
 const assignee = computed(() => family.getMemberById(props.task.assigneeId));
+const assigneeName = computed(() => getMemberDisplayName(assignee.value));
 const repeatLabel = computed(
   () =>
     ({

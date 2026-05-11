@@ -36,15 +36,16 @@
         <div class="member-list">
           <div v-for="m in addedMembers" :key="m.id" class="member-row">
             <span class="member-avatar">{{
-              m.name.slice(0, 2).toUpperCase()
+              getInitials(memberName(m))
             }}</span>
-            <span>{{ m.name }}</span>
+            <span>{{ memberName(m) }}</span>
             <span class="member-role-label">{{ m.role }}</span>
           </div>
         </div>
 
         <div class="member-form">
           <VInput v-model="newMember.name" placeholder="Имя" />
+          <VInput v-model="newMember.email" type="email" placeholder="Email" />
           <VSelect
             v-model="newMember.role"
             :options="roleOpts"
@@ -52,7 +53,7 @@
           />
           <VButton
             variant="secondary"
-            :disabled="!newMember.name.trim()"
+            :disabled="!newMember.name.trim() || !newMember.email.trim()"
             @click="addMember"
             >+ Добавить</VButton
           >
@@ -98,14 +99,18 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useFamilyStore } from "~/stores/family";
+import {
+  getInitials,
+  getMemberDisplayName,
+} from "~/utils/displayNames";
 import VInput from "~/components/ui/VInput.vue";
 import VSelect from "~/components/ui/VSelect.vue";
 import VButton from "~/components/ui/VButton.vue";
 
-definePageMeta({ layout: "default" });
+definePageMeta({ layout: "default", middleware: "auth" });
 
 const router = useRouter();
 const family = useFamilyStore();
@@ -113,7 +118,7 @@ const family = useFamilyStore();
 const step = ref(1);
 const familyName = ref(family.currentFamily?.name || "");
 const addedMembers = ref([]);
-const newMember = ref({ name: "", role: "member" });
+const newMember = ref({ name: "", email: "", role: "member" });
 const selected = ref([]);
 
 const roleOpts = [
@@ -130,23 +135,32 @@ const useCases = [
   { value: "reminders", icon: "🔔", label: "Напоминания" },
   { value: "ai", icon: "✨", label: "AI-помощник" },
 ];
+const memberName = (member) => getMemberDisplayName(member);
 
-function step1() {
+onMounted(() => {
+  family.fetchCurrentFamily().catch(() => {});
+});
+
+async function step1() {
   if (familyName.value.trim()) {
-    family.setFamily(familyName.value.trim());
-    step.value++;
+    try {
+      await family.setFamily(familyName.value.trim());
+      step.value++;
+    } catch (_) {}
   }
 }
 
-function addMember() {
-  if (!newMember.value.name.trim()) return;
-  const m = family.addMember({
-    name: newMember.value.name,
-    role: newMember.value.role,
-    email: "",
-  });
-  addedMembers.value.push(m);
-  newMember.value = { name: "", role: "member" };
+async function addMember() {
+  if (!newMember.value.name.trim() || !newMember.value.email.trim()) return;
+  try {
+    const m = await family.addMember({
+      name: newMember.value.name,
+      email: newMember.value.email,
+      role: newMember.value.role,
+    });
+    addedMembers.value.push(m);
+    newMember.value = { name: "", email: "", role: "member" };
+  } catch (_) {}
 }
 
 function toggleUC(val) {

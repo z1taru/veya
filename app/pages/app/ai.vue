@@ -5,8 +5,7 @@
       <h2>✨ AI-помощник</h2>
       <p class="text-muted">
         Напишите команду своими словами — Veya поймёт и создаст задачу или
-        добавит товар в покупки. Сейчас используется
-        <strong>mock-парсер</strong> без реального AI.
+        добавит товар в покупки.
       </p>
     </div>
 
@@ -14,15 +13,6 @@
     <VCard class="ai-box-card">
       <AiCommandBox />
     </VCard>
-
-    <!-- Mock notice -->
-    <div class="mock-notice">
-      <span class="mock-icon">🧪</span>
-      <div>
-        <strong>Режим разработки:</strong> команды обрабатываются локальным
-        парсером на основе ключевых слов. В продакшене здесь будет настоящий AI.
-      </div>
-    </div>
 
     <!-- Examples -->
     <section class="examples-section">
@@ -58,7 +48,7 @@
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import { useTasksStore } from "~/stores/tasks";
 import AiCommandBox from "~/components/app/AiCommandBox.vue";
 import VCard from "~/components/ui/VCard.vue";
@@ -68,6 +58,10 @@ definePageMeta({ layout: "app", middleware: "auth" });
 const tasks = useTasksStore();
 
 const recentTasks = computed(() => tasks.tasks.slice(0, 5));
+
+onMounted(() => {
+  tasks.fetchTasks().catch(() => {});
+});
 
 const examples = [
   { icon: "🔔", type: "Задача", text: "Напомни Алдияру прийти в 19:00" },
@@ -110,23 +104,6 @@ const examples = [
 
 .ai-box-card {
   padding: 1.75rem;
-}
-
-.mock-notice {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.9rem 1.25rem;
-  background: rgba(255, 200, 50, 0.06);
-  border: 1px solid rgba(255, 200, 50, 0.2);
-  border-radius: var(--radius-md);
-  font-size: 0.82rem;
-  color: var(--text-muted);
-}
-.mock-icon {
-  font-size: 1.1rem;
-  flex-shrink: 0;
-  margin-top: 0.05rem;
 }
 
 .examples-section {

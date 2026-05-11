@@ -4,7 +4,10 @@
       ← Назад
     </button>
 
-    <div v-if="task" class="fade-up">
+    <p v-if="tasks.loading" class="text-muted text-sm">Загружаем задачу...</p>
+    <p v-if="tasks.error" class="page-error">{{ tasks.error }}</p>
+
+    <div v-if="!tasks.loading && task" class="fade-up">
       <div class="td-header">
         <div class="td-title-row">
           <TaskStatusBadge :status="task.status" />
@@ -21,18 +24,18 @@
           <span class="meta-label">Кому</span>
           <div class="meta-member">
             <div class="m-avatar">
-              {{ assignee.name.slice(0, 2).toUpperCase() }}
+              {{ getInitials(assigneeName) }}
             </div>
-            {{ assignee.name }}
+            {{ assigneeName }}
           </div>
         </div>
         <div class="td-meta-item" v-if="creator">
           <span class="meta-label">Создал(а)</span>
           <div class="meta-member">
             <div class="m-avatar">
-              {{ creator.name.slice(0, 2).toUpperCase() }}
+              {{ getInitials(creatorName) }}
             </div>
-            {{ creator.name }}
+            {{ creatorName }}
           </div>
         </div>
         <div class="td-meta-item" v-if="task.dueDate">
@@ -75,7 +78,7 @@
       <div class="td-history mt-4">
         <h3 class="history-title">История</h3>
         <div class="history-list mt-2">
-          <div v-for="(h, i) in task.history" :key="i" class="history-item">
+          <div v-for="(h, i) in taskHistory" :key="i" class="history-item">
             <div class="history-dot" />
             <div>
               <span class="history-action">{{ h.action }}</span>
@@ -87,7 +90,7 @@
     </div>
 
     <EmptyState
-      v-else
+      v-else-if="!tasks.loading"
       icon="🔍"
       title="Задача не найдена"
       subtitle="Она могла быть удалена"
@@ -100,10 +103,14 @@
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { useTasksStore } from "~/stores/tasks";
 import { useFamilyStore } from "~/stores/family";
+import {
+  getInitials,
+  getMemberDisplayName,
+} from "~/utils/displayNames";
 import TaskStatusBadge from "~/components/public/TaskStatusBadge.vue";
 import EmptyState from "~/components/public/EmptyState.vue";
 import VButton from "~/components/ui/VButton.vue";
@@ -115,12 +122,15 @@ const tasks = useTasksStore();
 const family = useFamilyStore();
 
 const task = computed(() => tasks.getTaskById(route.params.id));
+const taskHistory = computed(() => tasks.history.length ? tasks.history : task.value?.history || []);
 const assignee = computed(() =>
   task.value ? family.getMemberById(task.value.assigneeId) : null,
 );
 const creator = computed(() =>
   task.value ? family.getMemberById(task.value.creatorId) : null,
 );
+const assigneeName = computed(() => getMemberDisplayName(assignee.value));
+const creatorName = computed(() => getMemberDisplayName(creator.value));
 
 const PRIORITY_LABELS = {
   high: "🔴 Высокий",
@@ -138,8 +148,18 @@ const priorityLabel = computed(
 );
 const repeatLabel = computed(() => REPEAT_LABELS[task.value?.repeat] || "");
 
+onMounted(async () => {
+  try {
+    await Promise.all([
+      tasks.fetchTask(route.params.id),
+      tasks.fetchTaskHistory(route.params.id),
+      family.fetchCurrentFamily(),
+    ]);
+  } catch (_) {}
+});
+
 function setStatus(status) {
-  tasks.updateTaskStatus(task.value.id, status);
+  tasks.updateTaskStatus(task.value.id, status).catch(() => {});
 }
 
 function formatDate(d) {
@@ -315,5 +335,9 @@ function formatDate(d) {
   color: var(--green);
   font-size: 0.85rem;
   display: inline-block;
+}
+.page-error {
+  font-size: 0.82rem;
+  color: var(--red);
 }
 </style>

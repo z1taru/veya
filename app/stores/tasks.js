@@ -1,94 +1,192 @@
-// stores/tasks.js
 import { defineStore } from 'pinia'
-import { DEMO_TASKS } from '~/data/mockData'
 
 const STATUS_LABELS = {
-  pending:  'Ожидает',
+  pending: 'Ожидает',
   accepted: 'Принята',
-  done:     'Выполнена',
+  done: 'Выполнена',
   declined: 'Отклонена',
-  later:    'Позже'
+  later: 'Позже'
+}
+
+function errorMessage(error, fallback) {
+  return error?.data?.message || error?.data?.error || error?.message || fallback
+}
+
+function toQuery(filters = {}) {
+  const params = new URLSearchParams()
+  Object.entries(filters || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') params.set(key, value)
+  })
+  const query = params.toString()
+  return query ? `?${query}` : ''
+}
+
+function normalizeList(response) {
+  if (Array.isArray(response)) return response
+  return response?.items || response?.content || response?.data || []
 }
 
 export const useTasksStore = defineStore('tasks', {
   state: () => ({
-    tasks: []
+    tasks: [],
+    selectedTask: null,
+    history: [],
+    loading: false,
+    error: ''
   }),
 
   getters: {
-    all: (s) => s.tasks,
-    pending: (s) => s.tasks.filter(t => t.status === 'pending'),
-    today: (s) => {
+    all: (state) => state.tasks,
+    pending: (state) => state.tasks.filter((task) => task.status === 'pending'),
+    today: (state) => {
       const today = new Date().toISOString().split('T')[0]
-      return s.tasks.filter(t => t.dueDate === today)
+      return state.tasks.filter((task) => task.dueDate === today)
     },
     statusLabel: () => (status) => STATUS_LABELS[status] || status
   },
 
   actions: {
-    init() {
-      if (!process.client) return
-      const saved = localStorage.getItem('veya_tasks')
-      this.tasks = saved ? JSON.parse(saved) : [...DEMO_TASKS]
-      this._persist()
-    },
-
-    createTask(data) {
-      const task = {
-        id: 't_' + Date.now(),
-        title:      data.title      || 'Без названия',
-        description: data.description || '',
-        creatorId:  data.creatorId  || 'u1',
-        assigneeId: data.assigneeId || null,
-        status:     'pending',
-        priority:   data.priority   || 'medium',
-        dueDate:    data.dueDate    || null,
-        dueTime:    data.dueTime    || null,
-        repeat:     data.repeat     || null,
-        createdAt:  new Date().toISOString().split('T')[0],
-        history: [{ date: new Date().toISOString().split('T')[0], action: 'Задача создана', userId: data.creatorId }]
+    async init() {
+      if (useAuthStore().isAuthenticated) {
+        await this.fetchTasks()
       }
-      this.tasks.unshift(task)
-      this._persist()
-      return task
     },
 
-    updateTaskStatus(taskId, status) {
-      const t = this.tasks.find(t => t.id === taskId)
-      if (!t) return
-      t.status = status
-      t.history.push({ date: new Date().toISOString().split('T')[0], action: STATUS_LABELS[status] || status, userId: 'u1' })
-      this._persist()
+    async fetchTasks(filters = {}) {
+      const { apiGet } = useApi()
+      this.loading = true
+      this.error = ''
+      try {
+        const response = await apiGet(`/api/tasks${toQuery(filters)}`)
+        this.tasks = normalizeList(response)
+        return this.tasks
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось загрузить задачи')
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
 
-    updateTask(taskId, data) {
-      const idx = this.tasks.findIndex(t => t.id === taskId)
-      if (idx === -1) return
-      this.tasks[idx] = { ...this.tasks[idx], ...data }
-      this._persist()
+    async fetchTask(id) {
+      const { apiGet } = useApi()
+      this.loading = true
+      this.error = ''
+      try {
+        this.selectedTask = await apiGet(`/api/tasks/${id}`)
+        return this.selectedTask
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось загрузить задачу')
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
 
-    deleteTask(taskId) {
-      this.tasks = this.tasks.filter(t => t.id !== taskId)
-      this._persist()
+    async createTask(payload) {
+      const { apiPost } = useApi()
+      this.loading = true
+      this.error = ''
+      try {
+        const task = await apiPost('/api/tasks', payload)
+        this.tasks.unshift(task)
+        return task
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось создать задачу')
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async updateTask(id, payload) {
+      const { apiPatch } = useApi()
+      this.loading = true
+      this.error = ''
+      try {
+        const task = await apiPatch(`/api/tasks/${id}`, payload)
+        this.upsertTask(task)
+        if (this.selectedTask?.id === id) this.selectedTask = task
+        return task
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось обновить задачу')
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async updateTaskStatus(id, status, comment = '') {
+      const { apiPatch } = useApi()
+      this.loading = true
+      this.error = ''
+      try {
+        const task = await apiPatch(`/api/tasks/${id}/status`, { status, comment })
+        this.upsertTask(task)
+        if (this.selectedTask?.id === id) this.selectedTask = task
+        return task
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось обновить статус')
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteTask(id) {
+      const { apiDelete } = useApi()
+      this.loading = true
+      this.error = ''
+      try {
+        await apiDelete(`/api/tasks/${id}`)
+        this.tasks = this.tasks.filter((task) => task.id !== id)
+        if (this.selectedTask?.id === id) this.selectedTask = null
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось удалить задачу')
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchTaskHistory(id) {
+      const { apiGet } = useApi()
+      this.error = ''
+      try {
+        const response = await apiGet(`/api/tasks/${id}/history`)
+        this.history = normalizeList(response)
+        return this.history
+      } catch (error) {
+        this.error = errorMessage(error, 'Не удалось загрузить историю')
+        throw error
+      }
+    },
+
+    upsertTask(task) {
+      const index = this.tasks.findIndex((item) => item.id === task.id)
+      if (index === -1) this.tasks.unshift(task)
+      else this.tasks[index] = task
     },
 
     getTaskById(id) {
-      return this.tasks.find(t => t.id === id) || null
+      return this.selectedTask?.id === id
+        ? this.selectedTask
+        : this.tasks.find((task) => String(task.id) === String(id)) || null
     },
 
     filteredTasks(filter, userId) {
       switch (filter) {
-        case 'mine':      return this.tasks.filter(t => t.assigneeId === userId)
-        case 'created':   return this.tasks.filter(t => t.creatorId  === userId)
-        case 'done':      return this.tasks.filter(t => t.status === 'done')
-        case 'today':     return this.today
-        default:          return this.tasks
+        case 'mine':
+          return this.tasks.filter((task) => task.assigneeId === userId)
+        case 'created':
+          return this.tasks.filter((task) => task.creatorId === userId)
+        case 'done':
+          return this.tasks.filter((task) => task.status === 'done')
+        case 'today':
+          return this.today
+        default:
+          return this.tasks
       }
-    },
-
-    _persist() {
-      localStorage.setItem('veya_tasks', JSON.stringify(this.tasks))
     }
   }
 })

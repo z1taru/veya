@@ -25,6 +25,7 @@
 <script setup>
 import { computed } from "vue";
 import { useFamilyStore } from "~/stores/family";
+import { getMemberDisplayName } from "~/utils/displayNames";
 
 const props = defineProps({ reminder: { type: Object, required: true } });
 defineEmits(["toggle"]);
@@ -33,7 +34,7 @@ const family = useFamilyStore();
 
 const assigneeName = computed(() => {
   const m = family.getMemberById(props.reminder.assigneeId);
-  return m ? m.name : null;
+  return m ? getMemberDisplayName(m) : null;
 });
 
 const REPEAT_LABELS = {

@@ -39,8 +39,8 @@
       <div v-if="user" class="sidebar-user">
         <div class="user-avatar">{{ initials }}</div>
         <div>
-          <div class="user-name">{{ user.name }}</div>
-          <div class="user-role">{{ family?.name }}</div>
+          <div class="user-name">{{ userName }}</div>
+          <div class="user-role">{{ familyName }}</div>
         </div>
       </div>
     </div>
@@ -53,6 +53,11 @@ import { useAuthStore } from "~/stores/auth";
 import { useFamilyStore } from "~/stores/family";
 import { useTasksStore } from "~/stores/tasks";
 import { useShoppingStore } from "~/stores/shopping";
+import {
+  getFamilyDisplayName,
+  getInitials,
+  getUserDisplayName,
+} from "~/utils/displayNames";
 
 const auth = useAuthStore();
 const famStore = useFamilyStore();
@@ -61,11 +66,11 @@ const shopping = useShoppingStore();
 
 const user = computed(() => auth.user);
 const family = computed(() => famStore.currentFamily);
+const userName = computed(() => getUserDisplayName(user.value));
+const familyName = computed(() => getFamilyDisplayName(family.value));
 const pendingCount = computed(() => tasks.pending.length);
 const shoppingCount = computed(() => shopping.remaining);
-const initials = computed(() =>
-  user.value ? user.value.name.slice(0, 2).toUpperCase() : "?",
-);
+const initials = computed(() => getInitials(userName.value));
 </script>
 
 <style scoped>
@@ -178,4 +183,3 @@ const initials = computed(() =>
   color: var(--text-muted);
 }
 </style>
-

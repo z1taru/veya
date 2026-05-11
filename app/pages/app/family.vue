@@ -1,14 +1,17 @@
 <template>
   <div class="family-page">
     <!-- Family card -->
+    <p v-if="family.loading" class="text-muted text-sm">Загружаем семью...</p>
+    <p v-if="family.error" class="page-error">{{ family.error }}</p>
+
     <VCard v-if="currentFamily" class="family-card">
       <div class="family-card-inner">
         <div class="family-icon">👨‍👩‍👧</div>
         <div>
-          <h2 class="family-name">{{ currentFamily.name }}</h2>
+          <h2 class="family-name">{{ familyDisplayName }}</h2>
           <p class="text-muted text-sm">
             {{ members.length }} участников · создана
-            {{ currentFamily.createdAt }}
+            {{ currentFamily.createdAt || currentFamily.createdAtIso || "—" }}
           </p>
         </div>
       </div>
@@ -68,8 +71,8 @@
       <div class="invites-list mt-2">
         <div v-for="inv in invites" :key="inv.id" class="invite-row">
           <div class="invite-info">
-            <span class="invite-name">{{ inv.name }}</span>
-            <span class="invite-email text-muted text-sm">{{ inv.email }}</span>
+            <span class="invite-name">{{ inviteName(inv) }}</span>
+            <span class="invite-email text-muted text-sm">{{ inv.email || inv.user?.email }}</span>
           </div>
           <span class="pending-badge">Ожидает</span>
         </div>
@@ -84,7 +87,7 @@
           <VInput
             v-model="familyNameEdit"
             label="Название семьи"
-            :placeholder="currentFamily?.name || 'Название'"
+            :placeholder="familyDisplayName || 'Название'"
           />
           <VButton
             variant="secondary"
@@ -101,8 +104,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useFamilyStore } from "~/stores/family";
+import {
+  getFamilyDisplayName,
+  getMemberDisplayName,
+} from "~/utils/displayNames";
 import FamilyMemberCard from "~/components/app/FamilyMemberCard.vue";
 import VCard from "~/components/ui/VCard.vue";
 import VInput from "~/components/ui/VInput.vue";
@@ -115,25 +122,40 @@ const family = useFamilyStore();
 const currentFamily = computed(() => family.currentFamily);
 const members = computed(() => family.members);
 const invites = computed(() => family.invites);
+const familyDisplayName = computed(() => getFamilyDisplayName(currentFamily.value));
+const inviteName = (invite) => getMemberDisplayName(invite);
 
 const inviteForm = ref({ name: "", email: "", role: "member" });
 const inviteSent = ref("");
-const familyNameEdit = ref(currentFamily.value?.name || "");
+const familyNameEdit = ref(familyDisplayName.value || "");
 const nameSaved = ref(false);
 
-function sendInvite() {
+onMounted(() => {
+  family.fetchCurrentFamily().catch(() => {});
+});
+
+watch(currentFamily, (value) => {
+  const name = getFamilyDisplayName(value);
+  if (name && !familyNameEdit.value) familyNameEdit.value = name;
+});
+
+async function sendInvite() {
   if (!inviteForm.value.name.trim() || !inviteForm.value.email.trim()) return;
-  family.inviteMember(inviteForm.value.email, inviteForm.value.name);
-  inviteSent.value = inviteForm.value.email;
-  inviteForm.value = { name: "", email: "", role: "member" };
-  setTimeout(() => (inviteSent.value = ""), 4000);
+  try {
+    await family.inviteMember({ ...inviteForm.value });
+    inviteSent.value = inviteForm.value.email;
+    inviteForm.value = { name: "", email: "", role: "member" };
+    setTimeout(() => (inviteSent.value = ""), 4000);
+  } catch (_) {}
 }
 
-function saveFamilyName() {
+async function saveFamilyName() {
   if (!familyNameEdit.value.trim()) return;
-  family.setFamily(familyNameEdit.value.trim());
-  nameSaved.value = true;
-  setTimeout(() => (nameSaved.value = false), 3000);
+  try {
+    await family.setFamily(familyNameEdit.value.trim());
+    nameSaved.value = true;
+    setTimeout(() => (nameSaved.value = false), 3000);
+  } catch (_) {}
 }
 </script>
 
@@ -276,5 +298,9 @@ function saveFamilyName() {
   font-size: 0.82rem;
   color: var(--green);
   margin-top: 0.5rem;
+}
+.page-error {
+  font-size: 0.82rem;
+  color: var(--red);
 }
 </style>
