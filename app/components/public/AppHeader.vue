@@ -40,10 +40,11 @@ onUnmounted(() => {
   transition: all 0.3s;
 }
 .header.scrolled {
-  background: rgba(10, 10, 10, 0.9);
-  backdrop-filter: blur(16px);
+  background: rgba(6, 6, 17, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
-  padding: 0.9rem 0;
+  padding: 0.85rem 0;
 }
 .header-inner {
   display: flex;
@@ -51,14 +52,16 @@ onUnmounted(() => {
   justify-content: space-between;
 }
 .logo {
-  font-family: "Syne", sans-serif;
+  font-family: "Plus Jakarta Sans", sans-serif;
   font-weight: 800;
-  font-size: 1.4rem;
-  color: var(--green);
-  letter-spacing: -0.02em;
+  font-size: 1.45rem;
+  color: var(--violet);
+  letter-spacing: -0.03em;
+  transition: opacity 0.2s;
 }
+.logo:hover { opacity: 0.85; }
 .logo span {
-  color: var(--text);
+  color: var(--amber);
 }
 .nav {
   display: flex;
@@ -68,6 +71,7 @@ onUnmounted(() => {
   font-size: 0.875rem;
   color: var(--text-muted);
   transition: color 0.2s;
+  font-weight: 400;
 }
 .nav a:hover,
 .nav a.router-link-active {
@@ -89,16 +93,21 @@ onUnmounted(() => {
   color: var(--text);
 }
 .btn-cta {
-  background: var(--green);
-  color: #000;
-  font-family: "Syne", sans-serif;
+  background: linear-gradient(135deg, #7B61FF 0%, #9B7BFF 100%);
+  color: #fff;
+  font-family: "Plus Jakarta Sans", sans-serif;
   font-weight: 700;
   font-size: 0.875rem;
-  padding: 0.55rem 1.25rem;
+  padding: 0.55rem 1.35rem;
   border-radius: 100px;
-  transition: opacity 0.2s;
+  box-shadow: 0 4px 16px rgba(123, 97, 255, 0.28);
+  transition: box-shadow 0.2s, transform 0.15s;
 }
 .btn-cta:hover {
-  opacity: 0.85;
+  box-shadow: 0 6px 24px rgba(123, 97, 255, 0.42);
+  transform: translateY(-1px);
+}
+.btn-cta:active {
+  transform: translateY(0);
 }
 </style>
