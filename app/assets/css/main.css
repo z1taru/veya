@@ -1,26 +1,62 @@
 :root {
-  --bg-0: #0a0a0a;
-  --bg-1: #111111;
-  --bg-2: #161616;
-  --bg-3: #1e1e1e;
-  --bg-4: #242424;
-  --green: #3cff8a;
-  --green-dim: #1fcc60;
-  --green-dark: #0d5c2e;
-  --green-glow: rgba(60, 255, 138, 0.12);
-  --green-border: rgba(60, 255, 138, 0.2);
-  --text: #f0f0f0;
-  --text-muted: #7a7a7a;
-  --text-dim: #3a3a3a;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-md: rgba(255, 255, 255, 0.12);
-  --red: #ff5c5c;
-  --yellow: #ffc832;
-  --blue: #5ca8ff;
+  /* ── Backgrounds — Deep Indigo Night ──────────────────── */
+  --bg-0: #060611;
+  --bg-1: #0D0C1F;
+  --bg-2: #131228;
+  --bg-3: #191832;
+  --bg-4: #201E3C;
+
+  /* ── Violet — AI primary ──────────────────────────────── */
+  --violet: #7B61FF;
+  --violet-dim: #5A43D8;
+  --violet-dark: rgba(123, 97, 255, 0.13);
+  --violet-glow: rgba(123, 97, 255, 0.22);
+  --violet-border: rgba(123, 97, 255, 0.28);
+
+  /* ── Amber — Home warmth ──────────────────────────────── */
+  --amber: #FFA940;
+  --amber-dim: #D98B22;
+  --amber-dark: rgba(255, 169, 64, 0.12);
+  --amber-glow: rgba(255, 169, 64, 0.18);
+  --amber-border: rgba(255, 169, 64, 0.28);
+
+  /* ── Rose — Care & connection ─────────────────────────── */
+  --rose: #FF6B9D;
+  --rose-glow: rgba(255, 107, 157, 0.12);
+  --rose-border: rgba(255, 107, 157, 0.25);
+
+  /* ── Mint — Success states ────────────────────────────── */
+  --mint: #3DFFC4;
+  --mint-glow: rgba(61, 255, 196, 0.1);
+  --mint-border: rgba(61, 255, 196, 0.22);
+
+  /* ── Text ─────────────────────────────────────────────── */
+  --text: #EDE8FF;
+  --text-muted: #7E78A0;
+  --text-dim: #38344E;
+
+  /* ── Borders ──────────────────────────────────────────── */
+  --border: rgba(255, 255, 255, 0.065);
+  --border-md: rgba(255, 255, 255, 0.11);
+
+  /* ── Semantic aliases for app pages ──────────────────── */
+  --green: var(--violet);
+  --green-dim: var(--violet-dim);
+  --green-dark: var(--violet-dark);
+  --green-glow: var(--violet-glow);
+  --green-border: var(--violet-border);
+  --yellow: var(--amber);
+  --red: var(--rose);
+  --blue: #5CA8FF;
+
+  /* ── Radii ────────────────────────────────────────────── */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 24px;
+  --radius-2xl: 32px;
+
+  /* ── Layout ───────────────────────────────────────────── */
   --sidebar-w: 240px;
   --topbar-h: 60px;
 }
@@ -39,10 +75,10 @@ body {
 }
 
 h1, h2, h3, h4, h5 {
-  font-family: 'Syne', sans-serif;
-  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
   line-height: 1.1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   color: var(--text);
 }
 
@@ -57,7 +93,7 @@ input, textarea, select, button { font-family: inherit; }
 ::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 
-/* ── Utility ─────────────────────────────────────────── */
+/* ── Utility ──────────────────────────────────────────── */
 .container { max-width: 1120px; margin: 0 auto; padding: 0 2rem; }
 .flex { display: flex; }
 .flex-col { flex-direction: column; }
@@ -70,7 +106,8 @@ input, textarea, select, button { font-family: inherit; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
 .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
-.text-green { color: var(--green); }
+.text-violet { color: var(--violet); }
+.text-amber { color: var(--amber); }
 .text-muted { color: var(--text-muted); }
 .text-sm { font-size: 0.85rem; }
 .text-xs { font-size: 0.75rem; }
@@ -85,17 +122,24 @@ input, textarea, select, button { font-family: inherit; }
 .mb-2 { margin-bottom: 1rem; }
 .mb-3 { margin-bottom: 1.5rem; }
 
-/* ── Section label ───────────────────────────────────── */
+/* ── Section label pill ───────────────────────────────── */
 .section-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--green);
-  margin-bottom: 0.75rem;
+  color: var(--violet);
+  background: var(--violet-dark);
+  border: 1px solid var(--violet-border);
+  padding: 0.28rem 0.85rem;
+  border-radius: 100px;
+  margin-bottom: 0.875rem;
 }
 
-/* ── Animations ──────────────────────────────────────── */
+/* ── Animations ───────────────────────────────────────── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -115,21 +159,25 @@ input, textarea, select, button { font-family: inherit; }
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
 
-.fade-up   { animation: fadeUp 0.6s ease both; }
-.fade-in   { animation: fadeIn 0.4s ease both; }
+.fade-up { animation: fadeUp 0.6s ease both; }
+.fade-in { animation: fadeIn 0.4s ease both; }
 
-/* ── Loading spinner ─────────────────────────────────── */
+/* ── Loading spinner ──────────────────────────────────── */
 .spinner {
-  width: 20px; height: 20px;
+  width: 18px; height: 18px;
   border: 2px solid var(--border-md);
-  border-top-color: var(--green);
+  border-top-color: var(--violet);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   display: inline-block;
 }
 
-/* ── Responsive helpers ──────────────────────────────── */
+/* ── Responsive helpers ───────────────────────────────── */
 @media (max-width: 768px) {
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
   .hide-mobile { display: none !important; }

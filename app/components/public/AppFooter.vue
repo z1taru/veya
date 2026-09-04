@@ -21,6 +21,7 @@
   border-top: 1px solid var(--border);
   padding: 2.5rem 0;
   margin-top: 4rem;
+  background: var(--bg-0);
 }
 .footer-inner {
   display: flex;
@@ -30,13 +31,14 @@
   gap: 1.5rem;
 }
 .logo {
-  font-family: "Syne", sans-serif;
+  font-family: "Plus Jakarta Sans", sans-serif;
   font-weight: 800;
   font-size: 1.2rem;
-  color: var(--green);
+  color: var(--violet);
+  letter-spacing: -0.025em;
 }
 .logo span {
-  color: var(--text);
+  color: var(--amber);
 }
 .footer-brand p {
   font-size: 0.8rem;
@@ -54,7 +56,7 @@
   transition: color 0.2s;
 }
 .footer-links a:hover {
-  color: var(--green);
+  color: var(--violet);
 }
 .footer-copy {
   font-size: 0.78rem;

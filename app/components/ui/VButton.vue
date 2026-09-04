@@ -34,17 +34,15 @@ defineEmits(["click"]);
   border: none;
   border-radius: 100px;
   cursor: pointer;
-  font-family: "Syne", sans-serif;
-  font-weight: 600;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 700;
   letter-spacing: 0.01em;
   transition:
-    opacity 0.2s,
+    box-shadow 0.2s,
     transform 0.15s,
+    opacity 0.2s,
     background 0.2s;
   white-space: nowrap;
-}
-.vbtn:hover:not(:disabled) {
-  opacity: 0.85;
 }
 .vbtn:active:not(:disabled) {
   transform: scale(0.97);
@@ -64,7 +62,7 @@ defineEmits(["click"]);
 }
 .vbtn--md {
   font-size: 0.9rem;
-  padding: 0.7rem 1.5rem;
+  padding: 0.72rem 1.5rem;
 }
 .vbtn--lg {
   font-size: 1rem;
@@ -73,13 +71,22 @@ defineEmits(["click"]);
 
 /* variants */
 .vbtn--primary {
-  background: var(--green);
-  color: #000;
+  background: linear-gradient(135deg, #7B61FF 0%, #9B7BFF 100%);
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(123, 97, 255, 0.28);
+}
+.vbtn--primary:hover:not(:disabled) {
+  box-shadow: 0 6px 26px rgba(123, 97, 255, 0.42);
+  transform: translateY(-1px);
 }
 .vbtn--secondary {
   background: var(--bg-3);
   color: var(--text);
   border: 1px solid var(--border);
+}
+.vbtn--secondary:hover:not(:disabled) {
+  border-color: var(--violet-border);
+  background: var(--bg-4);
 }
 .vbtn--outline {
   background: transparent;
@@ -87,14 +94,17 @@ defineEmits(["click"]);
   border: 1px solid var(--border);
 }
 .vbtn--outline:hover:not(:disabled) {
-  border-color: var(--green-border);
-  color: var(--green);
-  opacity: 1;
+  border-color: var(--violet-border);
+  color: var(--violet);
+  background: var(--violet-dark);
 }
 .vbtn--danger {
-  background: rgba(255, 92, 92, 0.12);
-  color: var(--red);
-  border: 1px solid rgba(255, 92, 92, 0.25);
+  background: rgba(255, 107, 157, 0.1);
+  color: var(--rose);
+  border: 1px solid var(--rose-border);
+}
+.vbtn--danger:hover:not(:disabled) {
+  background: rgba(255, 107, 157, 0.16);
 }
 .vbtn--ghost {
   background: transparent;
@@ -105,7 +115,6 @@ defineEmits(["click"]);
 .vbtn--ghost:hover:not(:disabled) {
   background: var(--bg-3);
   color: var(--text);
-  opacity: 1;
 }
 
 .vbtn--loading {
